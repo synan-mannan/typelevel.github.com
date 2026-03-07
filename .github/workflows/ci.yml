@@ -2,27 +2,45 @@ name: Continuous Integration
 
 on:
   pull_request:
-    branches: ['**']
+    branches: ["**"]
   push:
-    branches: ['main']
+    branches: ["main"]
 
 jobs:
   build:
-    name: Build and Test
-    runs-on: ubuntu-latest
+    name: Build and Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-java@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 25
-      - uses: coursier/cache-action@v6
-      - uses: VirtusLab/scala-cli-setup@main
+
+      - name: Cache Coursier
+        uses: coursier/cache-action@v6
+
+      - name: Setup Scala CLI
+        uses: VirtusLab/scala-cli-setup@main
         with:
           scala-cli-version: 1.12.2
-      - run: scala-cli fmt --check .
-      - run: scala-cli --server=false build.scala
-      - if: github.event_name != 'pull_request'
+
+      - name: Check formatting
+        run: scala-cli fmt --check .
+
+      - name: Build project
+        run: scala-cli --server=false build.scala
+
+      - name: Deploy to GitHub Pages
+        if: github.event_name != 'pull_request' && matrix.os == 'ubuntu-latest'
         uses: peaceiris/actions-gh-pages@v4.0.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
